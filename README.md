@@ -1,7 +1,29 @@
 # AAI
 
-### prototype 1: video to summary
+## Зависимости
 
-- [ ] Create script to get mp4 from path1, convert to wav, put to path 2
-- [ ] Create script to send text from wav file from path2 to whisper API, save txt to path3
-- [ ] Create script to send text from txt file from path3 covered in PROMPT_STRING to LLM API, save response to txt at path4
+* Python 3.10
+* [Poetry](https://python-poetry.org/)
+
+## Установка
+
+Выполнить следующие команды:
+
+    poetry install --no-root
+
+## Запуск
+
+Выполнить следующие команды:
+
+    poetry shell
+    export OPENAI_API_KEY="тут указать ваш ключ OpenAI API"
+    streamlit run main.py
+
+## Что делать
+
+- [ ] Реализовать метод `extract_audio` - извлекает аудио из mp4, нужно использовать библиотеку ffmpeg
+- [ ] Реализовать метод `speech_to_text` - преобразовывает разговор в текст, нужно использовать OpenAI, модель Whisper
+- [ ] Реализовать метод `summarize` - саммаризирует текст с помощью OpenAI и GPT-3.5/GPT-4
+- [ ] (?) Реализовать `speech_to_text` с помощью локальной модели (Whisper)
+- [ ] (?) Реализовать `summarize` с помощью локальной модели (Saiga 2 70B, Zephyr 7B или Mistral 7B)
+- [ ] Поэкспериментировать с промптами
