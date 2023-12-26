@@ -56,22 +56,23 @@ st.button("Начать заново", type="primary")
 uploaded_file: Optional[UploadedFile] = st.file_uploader("Файл в формате .mp4", type="mp4")
 
 if uploaded_file is not None:
-    st.subheader("Извлечение аудио", divider=True)
+    if st.button("Извлечь аудио из видео"):
+        st.subheader("Извлечение аудио", divider=True)
 
-    audio_path: str = extract_audio(uploaded_file)
-    st.write(audio_path)
+        audio_path: str = extract_audio(uploaded_file)
+        st.write(audio_path)
 
-    if st.button("Извлечь текст из аудио"):
-        st.subheader("Извлечение текста из аудио", divider=True)
-        text: str = speech_to_text(audio_path)
+        if st.button("Извлечь текст из аудио"):
+            st.subheader("Извлечение текста из аудио", divider=True)
+            text: str = speech_to_text(audio_path)
 
-        conversation = st.text_area("Извлечённый текст", text)
-        system_prompt = st.text_area("Системный промпт", DEFAULT_SYSTEM_PROMPT)
-        prompt = st.text_area("Промпт", DEFAULT_PROMPT)
+            conversation = st.text_area("Извлечённый текст", text)
+            system_prompt = st.text_area("Системный промпт", DEFAULT_SYSTEM_PROMPT)
+            prompt = st.text_area("Промпт", DEFAULT_PROMPT)
 
-        if st.button("Создать саммари"):
-            st.subheader("Создание саммари", divider=True)
-            summary: str = summarize(conversation, system_prompt, prompt)
+            if st.button("Создать саммари"):
+                st.subheader("Создание саммари", divider=True)
+                summary: str = summarize(conversation, system_prompt, prompt)
 
-            st.text("Результат:")
-            st.write(summary)
+                st.text("Результат:")
+                st.write(summary)
