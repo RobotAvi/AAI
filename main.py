@@ -38,8 +38,7 @@ def speech_to_text(path_to_file: str) -> str:
 
     audio_file: BinaryIO = open(path_to_file, "rb")
     transcript: Transcription = client.audio.transcriptions.create(
-      model="whisper-1",
-      file=audio_file
+        model="whisper-1", file=audio_file
     )
 
     return transcript.text
@@ -50,29 +49,57 @@ def summarize(conversation: str, system_prompt: str, prompt: str) -> str:
     """Return conversation summary"""
     return ""
 
-st.header("Корус: Отчёт по встрече")
-st.button("Начать заново", type="primary")
 
-uploaded_file: Optional[UploadedFile] = st.file_uploader("Файл в формате .mp4", type="mp4")
+st.header("Корус: Отчёт по встрече")
+
+if st.button("Начать заново", type="primary"):
+    st.session_state.step = 1
+    del st.session_state["audio_path"]
+    del st.session_state["conversation"]
+    del st.session_state["system_prompt"]
+    del st.session_state["prompt"]
+
+uploaded_file: Optional[UploadedFile] = st.file_uploader(
+    "Файл в формате .mp4", type="mp4"
+)
+
+if "audio_path" not in st.session_state:
+    st.session_state.step = 1
+    st.session_state.audio_path = None
+    st.session_state.conversation = None
+    st.session_state.system_prompt = None
+    st.session_state.prompt = None
 
 if uploaded_file is not None:
-    if st.button("Извлечь аудио из видео"):
+    if st.session_state.step == 1 and st.button("Извлечь аудио из видео"):
         st.subheader("Извлечение аудио", divider=True)
+        st.session_state.audio_path = audio_path = extract_audio(uploaded_file)
+        st.session_state.step = 2
+        st.success("Аудио извлечено")
 
-        audio_path: str = extract_audio(uploaded_file)
-        st.write(audio_path)
+    if st.session_state.step == 2 and st.button("Извлечь текст из аудио"):
+        st.subheader("Извлечение текста из аудио", divider=True)
+        text: str = speech_to_text(st.session_state.audio_path)
 
-        if st.button("Извлечь текст из аудио"):
-            st.subheader("Извлечение текста из аудио", divider=True)
-            text: str = speech_to_text(audio_path)
+        conversation = st.text_area("Извлечённый текст", text)
+        system_prompt = st.text_area("Системный промпт", DEFAULT_SYSTEM_PROMPT)
+        prompt = st.text_area("Промпт", DEFAULT_PROMPT)
 
-            conversation = st.text_area("Извлечённый текст", text)
-            system_prompt = st.text_area("Системный промпт", DEFAULT_SYSTEM_PROMPT)
-            prompt = st.text_area("Промпт", DEFAULT_PROMPT)
+        st.session_state.conversation = conversation
+        st.session_state.system_prompt = system_prompt
+        st.session_state.prompt = prompt
 
-            if st.button("Создать саммари"):
-                st.subheader("Создание саммари", divider=True)
-                summary: str = summarize(conversation, system_prompt, prompt)
+        st.session_state.step = 3
 
-                st.text("Результат:")
-                st.write(summary)
+    if st.session_state.step == 3 and st.button("Создать саммари"):
+        st.subheader("Создание саммари", divider=True)
+        summary: str = summarize(
+            st.session_state.conversation,
+            st.session_state.conversation.system_prompt,
+            st.session_state.prompt,
+        )
+
+        st.text("Результат:")
+        st.write(summary)
+
+        st.session_state.step = 4
