@@ -1,4 +1,7 @@
+.env
 .venv
 .idea
 .DS_Store
+audio/
+videos/
 **.swp
