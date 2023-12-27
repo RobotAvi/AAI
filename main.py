@@ -34,21 +34,21 @@ DEFAULT_PROMPT = """/////// Разговор ///////
 Я дам тебе чаевые в размере $1000 за самый лучший анализ!"""
 
 
-def extract_audio(uploaded_file: UploadedFile) -> str:
+def extract_audio(uploaded_file: UploadedFile) -> BytesIO:
     """Extracts audio from uploaded file"""
-    video_audio = AudioSegment.from_file(uploaded_file)
-    temporary_file: str = NamedTemporaryFile(suffix=".mp3", delete=False).name
+    video = AudioSegment.from_file(uploaded_file)
+    audio = BytesIO()
 
-    video_audio.export(temporary_file, format="mp3")
+    video.export(audio, format="mp3")
 
-    return temporary_file
+    return audio
 
 
-def split_audio(audio_file: str, number_of_chunks: int) -> list[bytes]:
+def split_audio(audio_buffer: bytes, number_of_chunks: int) -> list[bytes]:
     """Split audio into chunks"""
     file_chunks: list[bytes] = []
 
-    segment: AudioSegment = AudioSegment.from_mp3(audio_file)
+    segment: AudioSegment = AudioSegment.from_mp3(BytesIO(audio_buffer))
     chunks: list[AudioSegment] = silence.split_on_silence(
         segment, min_silence_len=1000, silence_thresh=-16, keep_silence=200
     )
@@ -92,15 +92,16 @@ def split_audio(audio_file: str, number_of_chunks: int) -> list[bytes]:
     return file_chunks
 
 
-def speech_to_text(path_to_file: str) -> str:
+def speech_to_text(path_to_file: BytesIO) -> str:
     """Transcribe file"""
-    file_size: int = path.getsize(path_to_file)
+    file_bytes: bytes = path_to_file.getvalue()
+    file_size: int = len(file_bytes)
     file_chunks: list[bytes]
 
     if file_size < AUDIO_FILE_SIZE_LIMIT:
-        file_chunks = [open(path_to_file, "rb").read()]
+        file_chunks = [file_bytes]
     else:
-        file_chunks = split_audio(path_to_file, file_size // AUDIO_FILE_SIZE_LIMIT + 1)
+        file_chunks = split_audio(file_bytes, file_size // AUDIO_FILE_SIZE_LIMIT + 1)
 
     client: OpenAI = OpenAI(api_key=API_KEY)
     text: list[str] = []
@@ -110,8 +111,11 @@ def speech_to_text(path_to_file: str) -> str:
         print("Transcribing chunk", ctr)
         ctr += 1
 
+        chunk_file: BytesIO = BytesIO(chunk)
+        chunk_file.name = "chunk.mp3"
+
         transcript: Transcription = client.audio.transcriptions.create(
-            model=SPEECH_TO_TEXT_MODEL, file=chunk, response_format="text"
+            model=SPEECH_TO_TEXT_MODEL, file=chunk_file, response_format="text"
         )
 
         print(transcript.text)
@@ -152,28 +156,35 @@ if st.button("Начать заново", type="primary"):
     del st.session_state["prompt"]
 
 uploaded_file: Optional[UploadedFile] = st.file_uploader(
-    "Файл в формате .mp4", type="mp4"
+    "Файл в формате .mp4/.mp3", type=["mp4", "mp3"]
 )
 
-if "audio_path" not in st.session_state:
+if "audio_stream" not in st.session_state:
     st.session_state.step = 1
-    st.session_state.audio_path = None
+    st.session_state.audio_stream = None
     st.session_state.conversation = None
     st.session_state.system_prompt = None
     st.session_state.prompt = None
 
 if uploaded_file is not None:
-    if st.session_state.step == 1 and st.button("Извлечь аудио из видео"):
+    if st.session_state.step == 1 and uploaded_file.name.endswith(".mp3"):
+        st.session_state.audio_stream = uploaded_file
+        st.session_state.step = 2
+        st.success("Аудио извлечено")
+
+    if st.session_state.step == 1 and uploaded_file.name.endswith(".mp4") and st.button("Извлечь аудио из видео"):
         st.subheader("Извлечение аудио", divider=True)
-        audio_path: str = extract_audio(uploaded_file)
-        st.session_state.audio_path = audio_path
+        audio_stream: BytesIO = extract_audio(uploaded_file)
+        st.session_state.audio_stream = audio_stream
 
         st.session_state.step = 2
         st.success("Аудио извлечено")
 
+        st.download_button("Скачать аудио", audio_stream, file_name="audio.mp3", mime="audio/mp3")
+
     if st.session_state.step == 2 and st.button("Извлечь текст из аудио"):
         st.subheader("Извлечение текста из аудио", divider=True)
-        text: str = speech_to_text(st.session_state.audio_path)
+        text: str = speech_to_text(st.session_state.audio_stream)
 
         conversation = st.text_area("Извлечённый текст", text)
         system_prompt = st.text_area("Системный промпт", DEFAULT_SYSTEM_PROMPT)
