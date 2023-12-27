@@ -7,7 +7,6 @@ from openai import OpenAI
 from pydub import AudioSegment, silence, utils
 from openai.types.audio import Transcription
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-from tempfile import NamedTemporaryFile
 
 API_KEY = environ.get("OPENAI_API_KEY", "no-key")
 
@@ -115,7 +114,11 @@ def speech_to_text(path_to_file: BytesIO) -> str:
         chunk_file.name = "chunk.mp3"
 
         transcript: Transcription = client.audio.transcriptions.create(
-            model=SPEECH_TO_TEXT_MODEL, file=chunk_file, response_format="text"
+            model=SPEECH_TO_TEXT_MODEL,
+            file=chunk_file,
+            response_format="json",
+            language="ru",
+            prompt="Стенограмма обсуждения проекта, в котором участвовали сотрудники нескольких компаний."
         )
 
         print(transcript.text)
@@ -128,17 +131,13 @@ def summarize(conversation: str, system_prompt: str, prompt: str) -> str:
     """Return conversation summary"""
     client = OpenAI(api_key=environ.get("OPENAI_API_KEY", API_KEY))
     response = client.chat.completions.create(
-        # model="text-davinci-002",
-        model="gpt-4",
-        # prompt=f"{system_prompt}\n{prompt}\n",
+        model=SUMMARIZE_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": prompt.format(conversation=conversation)},
         ],
-        # prompt=f"Проанализируй данный разговор и выдели 5 главных тезисов.\n{conversation}\n",
-        max_tokens=512,
+        max_tokens=4096,
         temperature=0.7,
-        stop=None,
     )
     # generated_summary = response["choices"][0]["text"].strip()
     generated_summary = response.choices[0].message.content
@@ -172,7 +171,11 @@ if uploaded_file is not None:
         st.session_state.step = 2
         st.success("Аудио извлечено")
 
-    if st.session_state.step == 1 and uploaded_file.name.endswith(".mp4") and st.button("Извлечь аудио из видео"):
+    if (
+        st.session_state.step == 1
+        and uploaded_file.name.endswith(".mp4")
+        and st.button("Извлечь аудио из видео")
+    ):
         st.subheader("Извлечение аудио", divider=True)
         audio_stream: BytesIO = extract_audio(uploaded_file)
         st.session_state.audio_stream = audio_stream
@@ -180,7 +183,9 @@ if uploaded_file is not None:
         st.session_state.step = 2
         st.success("Аудио извлечено")
 
-        st.download_button("Скачать аудио", audio_stream, file_name="audio.mp3", mime="audio/mp3")
+        st.download_button(
+            "Скачать аудио", audio_stream, file_name="audio.mp3", mime="audio/mp3"
+        )
 
     if st.session_state.step == 2 and st.button("Извлечь текст из аудио"):
         st.subheader("Извлечение текста из аудио", divider=True)
@@ -200,7 +205,7 @@ if uploaded_file is not None:
         st.subheader("Создание саммари", divider=True)
         summary: str = summarize(
             st.session_state.conversation,
-            st.session_state.conversation.system_prompt,
+            st.session_state.system_prompt,
             st.session_state.prompt,
         )
 
