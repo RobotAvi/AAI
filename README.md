@@ -4,6 +4,7 @@
 
 * Python 3.10
 * [Poetry](https://python-poetry.org/)
+* ffmpeg
 
 ## Установка
 
