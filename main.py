@@ -149,7 +149,7 @@ st.header("Корус: Отчёт по встрече")
 
 if st.button("Начать заново", type="primary"):
     st.session_state.step = 1
-    del st.session_state["audio_path"]
+    del st.session_state["audio_stream"]
     del st.session_state["conversation"]
     del st.session_state["system_prompt"]
     del st.session_state["prompt"]
