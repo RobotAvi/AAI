@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  aai:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
+    volumes:
+      - ./audio:/app/audio
+      - ./videos:/app/videos
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  aai-dev:
+    build: .
+    ports:
+      - "8502:8501"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_ENABLE_CORS=false
+    volumes:
+      - .:/app
+      - ./audio:/app/audio
+      - ./videos:/app/videos
+    command: ["poetry", "run", "streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+    profiles:
+      - dev
