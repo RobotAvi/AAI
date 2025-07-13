@@ -1,4 +1,4 @@
-name: Deploy
+THIS SHOULD BE A LINTER ERRORname: Deploy
 
 on:
   push:
@@ -30,19 +30,20 @@ jobs:
       run: poetry install --no-root
       
     - name: Download build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dist
         path: dist/
         
     - name: Create release
       if: startsWith(github.ref, 'refs/tags/')
+      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
         body: |
           Changes in this Release:
           ${{ github.event.head_commit.message }}
